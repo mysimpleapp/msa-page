@@ -1,4 +1,4 @@
-const msaPage = module.exports = new Msa.Module("page")
+const msaPage = module.exports = new Msa.Module()
 
 // user
 const { mdw:userMdw } = Msa.require("user")
