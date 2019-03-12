@@ -1,13 +1,13 @@
 {
-  "name": "msa-page",
+  "name": "@mysimpleapp/msa-page",
   "version": "0.1.0",
-  "description": "Page MySimpleApp module",
+  "description": "MySimpleApp module managing application WYSIWYG pages",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Nicolas CARREZ <nicolas.carrez@gmail.com>",
-  "license": "MIT",
+  "license": "ISC",
   "msaKey": "page",
   "msaDependencies": {
     "user": "../msa-user",

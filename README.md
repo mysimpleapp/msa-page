@@ -1,5 +1,5 @@
 # msa-page
-MySimpleApp component to create and render webpages
+MySimpleApp module managing application WYSIWYG pages
 
 ## CLIENT API
 
