@@ -1,6 +1,6 @@
 {
   "name": "@mysimpleapp/msa-page",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MySimpleApp module managing application WYSIWYG pages",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   "license": "ISC",
   "msaKey": "page",
   "msaDependencies": {
-    "user": "../msa-user",
-    "sheet": "../msa-sheet"
+    "user": "@mysimpleapp/msa-user",
+    "sheet": "@mysimpleapp/msa-sheet"
   }
 }
