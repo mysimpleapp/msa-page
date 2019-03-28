@@ -1,6 +1,6 @@
 {
   "name": "@mysimpleapp/msa-page",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MySimpleApp module managing application WYSIWYG pages",
   "main": "index.js",
   "scripts": {
