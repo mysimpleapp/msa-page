@@ -19,12 +19,12 @@ msaSheet.registerType("page", {
 	}
 })
 */
-msaPage.app.get("/:key", userMdw, async (req, res, next) => {
+msaPage.app.get("/:id", userMdw, async (req, res, next) => {
 	try {
-		const { key } = req.params
-		const sheet = await msaSheet.getSheet(req, key)
+		const { id } = req.params
+		const sheet = await msaSheet.getSheet(req, id)
 		if(sheet === null) return next(404)
-		res.sendPage(msaSheet.renderSheetAsHtml(sheet, "/page/_sheet", key))
+		res.sendPage(msaSheet.renderSheetAsHtml(sheet, "/page/_sheet", id))
 	} catch(err) { next(err) }
 })
 
