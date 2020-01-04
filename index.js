@@ -1,7 +1,7 @@
 const msaPage = module.exports = new Msa.Module()
 
 // user
-const { mdw:userMdw } = Msa.require("user")
+const { userMdw, unauthHtml } = Msa.require("user")
 // sheet
 const MsaSheet = Msa.require("sheet/module")
 const msaSheet = new MsaSheet("page")
@@ -25,7 +25,10 @@ msaPage.app.get("/:id", userMdw, async (req, res, next) => {
 		const sheet = await msaSheet.getSheet(req, id)
 		if(sheet === null) return next(404)
 		res.sendPage(msaSheet.renderSheetAsHtml(sheet, "/page/_sheet", id))
-	} catch(err) { next(err) }
+	} catch(err) {
+		if(err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
+		else next(err)
+	}
 })
 
 msaPage.app.use("/_sheet", msaSheet.app)
