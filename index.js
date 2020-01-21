@@ -1,10 +1,41 @@
-const msaPage = module.exports = new Msa.Module()
-
-// user
+const { withDb } = Msa.require("db")
 const { userMdw, unauthHtml } = Msa.require("user")
-// sheet
 const MsaSheet = Msa.require("sheet/module")
-const msaSheet = new MsaSheet("page")
+
+class MsaPageModule extends Msa.Module {
+
+	constructor(){
+		super()
+		this.initApp()
+		this.initSheetMod()
+	}
+
+	initApp(){
+
+		this.app.get("/:id", userMdw, async (req, res, next) => {
+			withDb(async db => {
+				const ctx = newCtx(req, { db })
+				const id = this.sheetMod.getId(ctx, req.params.id)
+				const sheet = await this.sheetMod.getSheet(ctx, id)
+				if(sheet === null) return next(404)
+				res.sendPage(this.sheetMod.renderSheetAsHtml(sheet, "/page/_sheet", id))
+			}).catch(err => {
+				if(err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
+				else next(err)
+			})
+		})
+	}
+
+	initSheetMod(){
+		this.sheetMod = new class extends MsaSheet {
+			getId(ctx, reqId){
+				return `page-${reqId}`
+			}
+		}
+		this.app.use("/_sheet", this.sheetMod.app)
+	}
+}
+
 /*
 // register page sheets
 msaSheet.registerType("page", {
@@ -19,16 +50,16 @@ msaSheet.registerType("page", {
 	}
 })
 */
-msaPage.app.get("/:id", userMdw, async (req, res, next) => {
-	try {
-		const { id } = req.params
-		const sheet = await msaSheet.getSheet(req, id)
-		if(sheet === null) return next(404)
-		res.sendPage(msaSheet.renderSheetAsHtml(sheet, "/page/_sheet", id))
-	} catch(err) {
-		if(err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
-		else next(err)
-	}
-})
 
-msaPage.app.use("/_sheet", msaSheet.app)
+
+// utils
+
+function newCtx(req, kwargs){
+	const ctx = Object.create(req)
+	Object.assign(ctx, kwargs)
+	return ctx
+}
+
+// export
+
+module.exports = new MsaPageModule()
