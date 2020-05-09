@@ -18,7 +18,7 @@ class MsaPageModule extends Msa.Module {
 				const reqId = req.params.id
 				const id = this.sheetMod.getId(ctx, reqId)
 				const sheet = await this.sheetMod.getSheet(ctx, id)
-				if (sheet === null) return next(404)
+				if (sheet === null) return next(Msa.NOT_FOUND)
 				res.sendPage(this.sheetMod.renderSheetAsHtml(sheet, "/page/_sheet", reqId))
 			}).catch(err => {
 				if (err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
