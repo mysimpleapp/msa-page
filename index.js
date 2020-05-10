@@ -1,6 +1,6 @@
 const { withDb } = Msa.require("db")
 const { userMdw, unauthHtml } = Msa.require("user")
-const MsaSheet = Msa.require("sheet/module")
+const { MsaSheet, renderSheetAsHtml } = Msa.require("sheet/module")
 
 class MsaPageModule extends Msa.Module {
 
@@ -19,7 +19,7 @@ class MsaPageModule extends Msa.Module {
 				const id = this.sheetMod.getId(ctx, reqId)
 				const sheet = await this.sheetMod.getSheet(ctx, id)
 				if (sheet === null) return next(Msa.NOT_FOUND)
-				res.sendPage(this.sheetMod.renderSheetAsHtml(sheet, "/page/_sheet", reqId))
+				res.sendPage(renderSheetAsHtml(sheet, "/page/_sheet", reqId))
 			}).catch(err => {
 				if (err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
 				else next(err)
@@ -63,4 +63,7 @@ function newCtx(req, kwargs) {
 
 // export
 
-module.exports = new MsaPageModule()
+module.exports = {
+	startMsaModule: () => new MsaPageModule(),
+	MsaPageModule
+}
