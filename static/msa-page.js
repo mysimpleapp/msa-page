@@ -1,4 +1,4 @@
-import { importHtml, importOnCall, importObj, ajax, initMsaBox, exportMsaBox } from "/utils/msa-utils.js"
+import { importHtml, importOnCall, importRef, ajax, initMsaBox, exportMsaBox } from "/utils/msa-utils.js"
 
 const popupSrc = "/utils/msa-utils-popup.js"
 const addPopup = importOnCall(popupSrc, "addPopup")
@@ -51,7 +51,7 @@ export class HTMLMsaPageElement extends HTMLElement {
             const popup = await addPopup(this, document.createElement("msa-utils-boxes-menu"))
             popup.content.onSelect = async boxInfo => {
                 popup.remove()
-                const createFun = await importObj(boxInfo.create)
+                const createFun = await importRef(boxInfo.createRef)
                 const box = await createFun(this)
                 await this.initMsaBox(box)
                 this.insertBefore(box, addBut)
