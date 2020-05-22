@@ -1,10 +1,11 @@
-import { importHtml, importOnCall, importRef, ajax, initMsaBox, exportMsaBox } from "/utils/msa-utils.js"
+import { importHtml, importOnCall, importRef, ajax, initMsaBox, exportMsaBox, editMsaBox, forEachDeepMsaBox } from "/utils/msa-utils.js"
 
 const popupSrc = "/utils/msa-utils-popup.js"
 const addPopup = importOnCall(popupSrc, "addPopup")
 
 importHtml(`<style>
 	msa-page {
+        margin: .5em;
         display: flex;
         flex-direction: column;
 		flex: 1;
@@ -49,10 +50,10 @@ export class HTMLMsaPageElement extends HTMLElement {
         addBut.onclick = async () => {
             await import("/utils/msa-utils-boxes-menu.js")
             const popup = await addPopup(this, document.createElement("msa-utils-boxes-menu"))
-            popup.content.onSelect = async boxInfo => {
+            popup.content.onSelect = async (tag, boxInfo) => {
                 popup.remove()
                 const createFun = await importRef(boxInfo.createRef)
-                const box = await createFun(this)
+                const box = createFun ? await createFun(this) : document.createElement(tag)
                 await this.initMsaBox(box)
                 this.insertBefore(box, addBut)
                 this.postPage()
@@ -63,6 +64,18 @@ export class HTMLMsaPageElement extends HTMLElement {
 
     async initMsaBox(box) {
         await initMsaBox(box, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
+        await forEachDeepMsaBox(box, (_box, boxInfo) => {
+            _box.addEventListener("dblclick", () => {
+                _box.msaPageEditing = true
+                editMsaBox(_box, true)
+            })
+            _box.addEventListener("blur", async () => {
+                if (!_box.msaPageEditing) return
+                delete _box.msaPageEditing
+                await editMsaBox(_box, false)
+                this.postPage()
+            })
+        })
     }
 
     async getPage() {
