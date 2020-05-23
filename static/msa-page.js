@@ -9,7 +9,11 @@ importHtml(`<style>
         display: flex;
         flex-direction: column;
 		flex: 1;
-	}
+    }
+    msa-page .msa-page-box:hover, 
+    msa-page .msa-page-box.msa-page-editing {
+        box-shadow: 2px 2px 10px grey;
+    }
 </style>`)
 
 
@@ -61,20 +65,33 @@ export class HTMLMsaPageElement extends HTMLElement {
         return addBut
     }
 
-    async initMsaBox(box) {
-        await initMsaBox(box, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
-        await forEachDeepMsaBox(box, (_box, boxInfo) => {
-            _box.addEventListener("dblclick", () => {
-                _box.msaPageEditing = true
-                editMsaBox(_box, true)
-            })
-            _box.addEventListener("blur", async () => {
-                if (!_box.msaPageEditing) return
-                delete _box.msaPageEditing
-                await editMsaBox(_box, false)
-                this.postPage()
-            })
+    async initMsaBox(el) {
+        await initMsaBox(el, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
+        await forEachDeepMsaBox(el, box => {
+            box.classList.add("msa-page-box")
+            box.addEventListener("click", () => this.editMsaBox(box))
+            box.addEventListener("blur", () => this.stopEditMsaBox(box))
         })
+    }
+
+    async editMsaBox(box) {
+        if (box === this.editingBox) return
+        if (this.editingBox) this.stopEditMsaBox(this.editingBox)
+        this.editingBox = box
+        box.msaPageContentBeforeEdition = (await exportMsaBox(box)).outerHTML
+        box.classList.add("msa-page-editing")
+        editMsaBox(box, true)
+    }
+
+    async stopEditMsaBox(box) {
+        if (box !== this.editingBox) return
+        delete this.editingBox
+        box.classList.remove("msa-page-editing")
+        await editMsaBox(box, false)
+        const content = (await exportMsaBox(box)).outerHTML
+        if (content != box.msaPageContentBeforeEdition)
+            this.postPage()
+        delete box.msaPageContentBeforeEdition
     }
 
     async getPage() {
@@ -88,7 +105,10 @@ export class HTMLMsaPageElement extends HTMLElement {
 
     async postPage() {
         const tmpl = await exportMsaBox(this.children)
-        for (let ed of tmpl.content.querySelectorAll(".msa-page-editor")) ed.remove()
+        for (let ed of tmpl.content.querySelectorAll(".msa-page-editor"))
+            ed.remove()
+        for (let box of tmpl.content.querySelectorAll(".msa-page-box"))
+            box.classList.remove("msa-page-box")
         await ajax("POST", `${this.getBaseUrl()}/${this.getId()}/_page`, {
             body: { content: tmpl.innerHTML }
         })
