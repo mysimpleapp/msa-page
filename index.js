@@ -90,7 +90,9 @@ class MsaPageModule extends Msa.Module {
 		})
 
 		// MSA boxes
-		useMsaBoxesRouter(this.app, '/:id/_box', req => ({ parentId: "page" }))
+		useMsaBoxesRouter(this.app, '/:id/_box', req => ({
+			parentId: `page-${req.params.id}`
+		}))
 	}
 	/*
 		initSheetMod() {
