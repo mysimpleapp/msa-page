@@ -56,7 +56,10 @@ export class HTMLMsaPageElement extends HTMLElement {
             const popup = await addPopup(this, document.createElement("msa-utils-boxes-menu"))
             popup.content.onSelect = async tag => {
                 popup.remove()
-                const box = await createMsaBox(tag, this)
+                const box = await createMsaBox(tag, {
+                    parent: this,
+                    boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
+                })
                 await this.initMsaBox(box)
                 this.insertBefore(box, addBut)
                 this.postPage()
