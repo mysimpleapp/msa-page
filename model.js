@@ -2,6 +2,7 @@ const { PageParamDict } = require("./params")
 
 const exp = module.exports = {}
 
+const FIELDS = [ "content", "createdById", "createdBy", "updatedBy", "createdAt", "updatedAt", "params" ]
 
 exp.Page = class {
 
@@ -10,43 +11,22 @@ exp.Page = class {
         this.params = new PageParamDict()
     }
 
-    formatForDb(keys) {
+    formatForDb() {
         const res = {}
-        const _format = (key, format) => {
-            if (!keys || keys.indexOf(key) >= 0)
-                res[key] = format(this[key])
-        }
-        const _formatRaw = key =>
-            _format(key, val => val)
-        const _formatDate = key =>
-            _format(key, val => val ? val.toISOString() : null)
-        _formatRaw("id")
-        _formatRaw("content")
-        _formatRaw("createdById")
-        _formatRaw("createdBy")
-        _formatRaw("updatedBy")
-        _formatDate("createdAt")
-        _formatDate("updatedAt")
-        _format("params", val => val.getAsDbStr())
+        res._id = this.id
+        FIELDS.forEach(f => res[f] = this[f])
+        res.params = res.params.getAsDbVal()
         return res
     }
 
     parseFromDb(dbPage) {
-        const _parseRaw = key => this[key] = dbPage[key]
-        const _parseDate = key => this[key] = dbPage[key] ? new Date(dbPage[key]) : null
-        _parseRaw("content")
-        _parseRaw("createdById")
-        _parseRaw("createdBy")
-        _parseRaw("updatedBy")
-        _parseDate("createdAt")
-        _parseDate("updatedAt")
-        this.params = PageParamDict.newFromDbStr(dbPage.params)
+        FIELDS.forEach(f => this[f] = dbPage[f])
+        this.params = PageParamDict.newFromDbVal(dbPage.params)
     }
 
     static newFromDb(id, dbPage) {
         const page = new this(id)
         if (dbPage) page.parseFromDb(dbPage)
-        page.dbPage = dbPage
         return page
     }
 }

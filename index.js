@@ -1,9 +1,9 @@
 const { Page } = require("./model")
 const { PagePerm } = require("./perm")
 const { useMsaBoxesRouter } = Msa.require("utils")
-const { withDb } = Msa.require("db")
+const { db } = Msa.require("db")
 const { userMdw, unauthHtml } = Msa.require("user")
-const { MsaSheet, renderSheetAsHtml } = Msa.require("sheet/module")
+//const { MsaSheet, renderSheetAsHtml } = Msa.require("sheet/module")
 
 class MsaPageModule extends Msa.Module {
 
@@ -13,33 +13,33 @@ class MsaPageModule extends Msa.Module {
 		//this.initSheetMod()
 	}
 
-	getId(ctx, reqId) {
+	getId(req, reqId) {
 		return `page-${reqId}`
 	}
 
-	getUserId(ctx) {
-		const user = ctx.user
-		return user ? user.id : ctx.connection.remoteAddress
+	getUserId(req) {
+		const user = req.user
+		return user ? user.id : req.connection.remoteAddress
 	}
 
-	getUserName(ctx, reqUserName) {
-		const user = ctx.user
+	getUserName(req, reqUserName) {
+		const user = req.user
 		return user ? user.name : reqUserName
 	}
 
-	canRead(ctx, page) {
+	canRead(req, page) {
 		const perm = page.params.perm.get()
-		return perm.check(ctx.user, PagePerm.READ)
+		return perm.check(req.user, PagePerm.READ)
 	}
 
-	canWrite(ctx, page) {
+	canWrite(req, page) {
 		const perm = page.params.perm.get()
-		return perm.check(ctx.user, PagePerm.WRITE)
+		return perm.check(req.user, PagePerm.WRITE)
 	}
 
-	canAdmin(ctx, page) {
+	canAdmin(req, page) {
 		const perm = page.params.perm.get()
-		return perm.check(ctx.user, PagePerm.ADMIN)
+		return perm.check(req.user, PagePerm.ADMIN)
 	}
 
 	initApp() {
@@ -70,23 +70,21 @@ class MsaPageModule extends Msa.Module {
 			})
 		})
 
-		this.app.get("/:id/_page", userMdw, (req, res, next) => {
-			withDb(async db => {
-				const ctx = newCtx(req, { db })
-				const id = this.getId(ctx, req.params.id)
-				const page = await this.getPage(ctx, id)
-				res.json(this.exportPage(ctx, page))
-			}).catch(next)
+		this.app.get("/:id/_page", userMdw, async (req, res, next) => {
+			try {
+				const id = this.getId(req, req.params.id)
+				const page = await this.getPage(req, id)
+				res.json(this.exportPage(req, page))
+			} catch(err) { next(err) }
 		})
 
-		this.app.post("/:id/_page", userMdw, (req, res, next) => {
-			withDb(async db => {
-				const ctx = newCtx(req, { db })
-				const id = this.getId(ctx, req.params.id)
+		this.app.post("/:id/_page", userMdw, async (req, res, next) => {
+			try {
+				const id = this.getId(req, req.params.id)
 				const { content, by } = req.body
-				await this.upsertPage(ctx, id, content, { by })
+				await this.upsertPage(req, id, content, { by })
 				res.sendStatus(Msa.OK)
-			}).catch(next)
+			} catch(err) { next(err) }
 		})
 
 		// MSA boxes
@@ -104,14 +102,14 @@ class MsaPageModule extends Msa.Module {
 			this.app.use("/_sheet", this.sheetMod.app)
 		}
 	*/
-	async getPage(ctx, id) {
-		const dbPage = await ctx.db.getOne("SELECT id, content, createdById, createdBy, updatedBy, createdAt, updatedAt, params FROM msa_pages WHERE id=:id", { id })
+	async getPage(req, id) {
+		const dbPage = await db.collection("msa_pages").findOne({ _id:id })
 		const page = Page.newFromDb(id, dbPage)
-		if (!this.canRead(ctx, page)) throw Msa.FORBIDDEN
+		if (!this.canRead(req, page)) throw Msa.FORBIDDEN
 		return page
 	}
 
-	exportPage(ctx, page) {
+	exportPage(req, page) {
 		return {
 			id: page.id,
 			content: page.content,
@@ -120,28 +118,22 @@ class MsaPageModule extends Msa.Module {
 			updatedBy: page.updatedBy,
 			createdAt: page.createdAt ? page.createdAt.toISOString() : null,
 			updatedAt: page.updatedAt ? page.updatedAt.toISOString() : null,
-			canEdit: this.canWrite(ctx, page)
+			canEdit: this.canWrite(req, page)
 		}
 	}
 
-	async upsertPage(ctx, id, content, kwargs) {
-		const page = await this.getPage(ctx, id)
-		if (!this.canWrite(ctx, page)) throw Msa.FORBIDDEN
+	async upsertPage(req, id, content, kwargs) {
+		const page = await this.getPage(req, id)
+		if (!this.canWrite(req, page)) throw Msa.FORBIDDEN
 		page.content = content
-		page.updatedBy = this.getUserName(ctx, kwargs && kwargs.by)
+		page.updatedBy = this.getUserName(req, kwargs && kwargs.by)
 		page.updatedAt = new Date(Date.now())
-		if (!page.dbPage) {
-			page.createdById = this.getUserId(ctx)
+		if (!page.createdById) {
+			page.createdById = this.getUserId(req)
 			page.createdBy = page.updatedBy
 			page.createdAt = page.updatedAt
 		}
-		if (page.dbPage) {
-			await ctx.db.run("UPDATE msa_pages SET content=:content, updatedBy=:updatedBy, updatedAt=:updatedAt WHERE id=:id",
-				page.formatForDb(["id", "content", "updatedBy", "updatedAt"]))
-		} else {
-			await ctx.db.run("INSERT INTO msa_pages (id, content, createdById, createdBy, createdAt, updatedBy, updatedAt) VALUES (:id, :content, :createdById, :createdBy, :createdAt, :updatedBy, :updatedAt)",
-				page.formatForDb(["id", "content", "createdById", "createdBy", "createdAt", "updatedBy", "updatedAt"]))
-		}
+		await db.collection("msa_pages").updateOne({ _id:id }, { $set: page.formatForDb() }, { upsert: true })
 	}
 }
 
@@ -160,21 +152,9 @@ msaSheet.registerType("page", {
 })
 */
 
-
-// utils
-
-function newCtx(req, kwargs) {
-	const ctx = Object.create(req)
-	Object.assign(ctx, kwargs)
-	return ctx
-}
-
 // export
 
 module.exports = {
-	installMsaModule: async itf => {
-		await require("./install")(itf)
-	},
 	startMsaModule: () => new MsaPageModule(),
 	MsaPageModule
 }
