@@ -71,8 +71,11 @@ export class HTMLMsaPageElement extends HTMLElement {
 
     async connectedCallback() {
         this.editing = false
-        if (this.toFetch())
+        if (this.toFetch()) {
             await this.getPage()
+        } else {
+            await this.initMsaBox(this)
+        }
         // dynamically import msa-page-menu
         //if (this.isEditable())
         //    importHtml({ wel: '/page/msa-page-menu.js' }, this)

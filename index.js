@@ -60,13 +60,20 @@ class MsaPageModule extends Msa.Module {
 		*/
 
 		// get page
-		this.app.get("/:id", (req, res, next) => {
-			const id = req.params.id
-			if (id.indexOf('-') >= 0 || id[0] === '_')
+		this.app.get("/:id", async (req, res, next) => {
+			const reqId = req.params.id
+			if (reqId.indexOf('.') >= 0)
 				return next()
+			const id = this.getId(req, reqId)
+			const page = await this.getPage(req, id)
 			res.sendPage({
 				wel: "/page/msa-page.js",
-				attrs: { 'page-id': id }
+				attrs: {
+					'page-id': reqId,
+					'editable': this.canWrite(req, page),
+					'fetch': 'false'
+				},
+				content: page.content
 			})
 		})
 
