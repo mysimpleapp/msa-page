@@ -1,7 +1,7 @@
 import { importHtml, importOnCall, ajax, createMsaBox, initMsaBox, exportMsaBox, editMsaBox, forEachDeepMsaBox } from "/utils/msa-utils.js"
 
-const popupSrc = "/utils/msa-utils-popup.js"
-const addPopup = importOnCall(popupSrc, "addPopup")
+const addPopup = importOnCall("/utils/msa-utils-popup.js", "addPopup")
+const setPositionRelativeTo = importOnCall("/utils/msa-utils-position.js", "setPositionRelativeTo")
 
 importHtml(`<style>
 	msa-page {
@@ -10,9 +10,46 @@ importHtml(`<style>
         flex-direction: column;
 		flex: 1;
     }
+
+    msa-page .msa-page-line {
+        display: flex;
+        flex-direction: row;
+    }
+
     msa-page .msa-page-box:hover, 
     msa-page .msa-page-box.msa-page-editing {
         box-shadow: 2px 2px 10px grey;
+    }
+    
+    msa-page .msa-page-first-add-btn {
+        display: block;
+        height: 3em;
+        background: white;
+        background-image: url('/utils/img/add');
+        background-size: 1.5em;
+        background-repeat: no-repeat;
+        background-position: center;
+        border: 2px dashed black;
+        border-radius: .5em;
+        cursor: pointer;
+    }
+    
+    msa-page .msa-page-box-add-btn {
+        display: block;
+        position: absolute;
+        width: 3em;
+        height: 3em;
+        background: white;
+        background-image: url('/utils/img/add');
+        background-size: 80%;
+        background-repeat: no-repeat;
+        background-position: center;
+        box-shadow: 1px 1px 5px grey;
+        border-radius: 1em;
+        cursor: pointer;
+    }
+    msa-page .msa-page-box-add-btn:hover {
+        box-shadow: 1px 1px 5px black;
     }
 </style>`)
 
@@ -39,19 +76,23 @@ export class HTMLMsaPageElement extends HTMLElement {
         // dynamically import msa-page-menu
         //if (this.isEditable())
         //    importHtml({ wel: '/page/msa-page-menu.js' }, this)
-        this.initAddButtons()
+        this.initFirstAddButtons()
     }
 
-    initAddButtons() {
-        const addBut = this.createAddButton()
-        this.appendChild(addBut)
+    initFirstAddButtons() {
+        if(this.querySelectorAll(".msa-page-line").length === 0) {
+            const btnEl = document.createElement("div")
+            btnEl.classList.add("msa-page-first-add-btn", "msa-page-editor")
+            this.initAddButton(btnEl, newBoxEl => {
+                insertBefore(this.createLine(newBoxEl), btnEl)
+                btnEl.remove()
+            })
+            this.appendChild(btnEl)
+        }
     }
 
-    createAddButton() {
-        const addBut = document.createElement("button")
-        addBut.classList.add("msa-page-editor")
-        addBut.textContent = "Add"
-        addBut.onclick = async () => {
+    initAddButton(addBtn, insertBoxFn) {
+        addBtn.onclick = async () => {
             await import("/utils/msa-utils-boxes-menu.js")
             const popup = await addPopup(this, document.createElement("msa-utils-boxes-menu"))
             popup.content.onSelect = async tag => {
@@ -61,11 +102,10 @@ export class HTMLMsaPageElement extends HTMLElement {
                     boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
                 })
                 await this.initMsaBox(box)
-                this.insertBefore(box, addBut)
+                insertBoxFn(box)
                 this.postPage()
             }
         }
-        return addBut
     }
 
     async initMsaBox(el) {
@@ -74,7 +114,35 @@ export class HTMLMsaPageElement extends HTMLElement {
             box.classList.add("msa-page-box")
             box.addEventListener("click", () => this.editMsaBox(box))
             box.addEventListener("blur", () => this.stopEditMsaBox(box))
+            box.addEventListener("mouseenter", () => this.addBoxAddButtons(box))
+            box.addEventListener("mouseleave", () => this.rmBoxAddButtons(box))
         })
+    }
+
+    addBoxAddButtons(boxEl) {
+        const lineEl = boxEl.parentNode
+        const addBtn = (posX, posY, onNewBox) => {
+            const btnEl = document.createElement("button")
+            btnEl.classList.add("msa-page-box-add-btn", "msa-page-editor")
+            setPositionRelativeTo(btnEl, boxEl, posX, posY)
+            boxEl.appendChild(btnEl)
+            this.initAddButton(btnEl, onNewBox)
+        }
+        addBtn("left", "center", newBoxEl => insertBefore(newBoxEl, boxEl))
+        addBtn("right", "center", newBoxEl => insertAfter(newBoxEl, boxEl))
+        addBtn("center", "top", newBoxEl => insertBefore(this.createLine(newBoxEl), lineEl))
+        addBtn("center", "bottom", newBoxEl => insertAfter(this.createLine(newBoxEl), lineEl))
+    }
+
+    rmBoxAddButtons(box) {
+        box.querySelectorAll(".msa-page-box-add-btn").forEach(b => b.remove())
+    }
+
+    createLine(box) {
+        const lineEl = document.createElement("div")
+        lineEl.classList.add("msa-page-line")
+        lineEl.appendChild(box)
+        return lineEl
     }
 
     async editMsaBox(box) {
@@ -139,3 +207,13 @@ customElements.define("msa-page-text", HTMLMsaPageTextElement)
 
 export class HTMLMsaPageBoxesElement extends HTMLElement { }
 customElements.define("msa-page-boxes", HTMLMsaPageBoxesElement)
+
+// utils
+
+function insertBefore(newNode, refNode) {
+    refNode.parentNode.insertBefore(newNode, refNode)
+}
+
+function insertAfter(newNode, refNode) {
+    refNode.parentNode.insertBefore(newNode, refNode.nextSibling)
+}
