@@ -16,8 +16,16 @@ importHtml(`<style>
         flex-direction: row;
     }
 
-    msa-page .msa-page-box:hover, 
-    msa-page .msa-page-box.msa-page-editing {
+    msa-page .msa-page-line > * {
+        margin: .5em;
+    }
+
+    msa-page .msa-page-box-editable {
+        outline: 1px dashed lightgrey;
+    }
+
+    msa-page .msa-page-box-editable:hover, 
+    msa-page .msa-page-box-editing {
         box-shadow: 2px 2px 10px grey;
     }
     
@@ -63,7 +71,7 @@ export class HTMLMsaPageElement extends HTMLElement {
         return this.getAttribute("page-id")
     }
     isEditable() {
-        return (this.getAttribute("editable") == "true")
+        return (this.getAttribute("editable") === "true")
     }
     toFetch() {
         return (this.getAttribute("fetch") !== "false")
@@ -79,7 +87,9 @@ export class HTMLMsaPageElement extends HTMLElement {
         // dynamically import msa-page-menu
         //if (this.isEditable())
         //    importHtml({ wel: '/page/msa-page-menu.js' }, this)
-        this.initFirstAddButtons()
+        if(this.isEditable()) {
+            this.initFirstAddButtons()
+        }
     }
 
     initFirstAddButtons() {
@@ -113,13 +123,15 @@ export class HTMLMsaPageElement extends HTMLElement {
 
     async initMsaBox(el) {
         await initMsaBox(el, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
-        await forEachDeepMsaBox(el, box => {
-            box.classList.add("msa-page-box")
-            box.addEventListener("click", () => this.editMsaBox(box))
-            box.addEventListener("blur", () => this.stopEditMsaBox(box))
-            box.addEventListener("mouseenter", () => this.addBoxAddButtons(box))
-            box.addEventListener("mouseleave", () => this.rmBoxAddButtons(box))
-        })
+        if(this.isEditable()) {
+            await forEachDeepMsaBox(el, box => {
+                box.classList.add("msa-page-box-editable")
+                box.addEventListener("click", () => this.editMsaBox(box))
+                box.addEventListener("blur", () => this.stopEditMsaBox(box))
+                box.addEventListener("mouseenter", () => this.addBoxAddButtons(box))
+                box.addEventListener("mouseleave", () => this.rmBoxAddButtons(box))
+            })
+        }
     }
 
     addBoxAddButtons(boxEl) {
@@ -153,14 +165,14 @@ export class HTMLMsaPageElement extends HTMLElement {
         if (this.editingBox) this.stopEditMsaBox(this.editingBox)
         this.editingBox = box
         box.msaPageContentBeforeEdition = (await exportMsaBox(box)).outerHTML
-        box.classList.add("msa-page-editing")
+        box.classList.add("msa-page-box-editing")
         editMsaBox(box, true)
     }
 
     async stopEditMsaBox(box) {
         if (box !== this.editingBox) return
         delete this.editingBox
-        box.classList.remove("msa-page-editing")
+        box.classList.remove("msa-page-box-editing")
         await editMsaBox(box, false)
         const content = (await exportMsaBox(box)).outerHTML
         if (content != box.msaPageContentBeforeEdition)
@@ -181,8 +193,8 @@ export class HTMLMsaPageElement extends HTMLElement {
         const tmpl = await exportMsaBox(this.children)
         for (let ed of tmpl.content.querySelectorAll(".msa-page-editor"))
             ed.remove()
-        for (let box of tmpl.content.querySelectorAll(".msa-page-box"))
-            box.classList.remove("msa-page-box")
+        for (let box of tmpl.content.querySelectorAll(".msa-page-box-editable"))
+            box.classList.remove("msa-page-box-editable")
         await ajax("POST", `${this.getBaseUrl()}/${this.getId()}/_page`, {
             body: { content: tmpl.innerHTML }
         })
