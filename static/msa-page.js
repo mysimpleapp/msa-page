@@ -18,6 +18,7 @@ importHtml(`<style>
 
     msa-page .msa-page-line > * {
         margin: .5em;
+        padding: .5em;
     }
 
     msa-page .msa-page-box-editable {
@@ -45,15 +46,15 @@ importHtml(`<style>
     msa-page .msa-page-box-add-btn {
         display: block;
         position: absolute;
-        width: 3em;
-        height: 3em;
+        width: 2em;
+        height: 2em;
         background: white;
         background-image: url('/utils/img/add');
         background-size: 80%;
         background-repeat: no-repeat;
         background-position: center;
         box-shadow: 1px 1px 5px grey;
-        border-radius: 1em;
+        border-radius: .5em;
         cursor: pointer;
     }
     msa-page .msa-page-box-add-btn:hover {
@@ -124,10 +125,15 @@ export class HTMLMsaPageElement extends HTMLElement {
     async initMsaBox(el) {
         await initMsaBox(el, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
         if(this.isEditable()) {
-            await forEachDeepMsaBox(el, box => {
+            await forEachDeepMsaBox(el, async box => {
+                box.msaPageContentBeforeEdition = (await this.exportMsaBox(box)).innerHTML
                 box.classList.add("msa-page-box-editable")
-                box.addEventListener("click", () => this.editMsaBox(box))
-                box.addEventListener("blur", () => this.stopEditMsaBox(box))
+                box.setAttribute("tabindex", 0)
+                box.addEventListener("focus", () => this.editMsaBox(box))
+                box.addEventListener("focusout", evt => {
+                    if(!box.contains(evt.relatedTarget))
+                        this.stopEditMsaBox(box)
+                })
                 box.addEventListener("mouseenter", () => this.addBoxAddButtons(box))
                 box.addEventListener("mouseleave", () => this.rmBoxAddButtons(box))
             })
@@ -164,9 +170,8 @@ export class HTMLMsaPageElement extends HTMLElement {
         if (box === this.editingBox) return
         if (this.editingBox) this.stopEditMsaBox(this.editingBox)
         this.editingBox = box
-        box.msaPageContentBeforeEdition = (await exportMsaBox(box)).outerHTML
         box.classList.add("msa-page-box-editing")
-        editMsaBox(box, true)
+        await editMsaBox(box, true)
     }
 
     async stopEditMsaBox(box) {
@@ -174,10 +179,10 @@ export class HTMLMsaPageElement extends HTMLElement {
         delete this.editingBox
         box.classList.remove("msa-page-box-editing")
         await editMsaBox(box, false)
-        const content = (await exportMsaBox(box)).outerHTML
+        const content = (await this.exportMsaBox(box)).innerHTML
         if (content != box.msaPageContentBeforeEdition)
             this.postPage()
-        delete box.msaPageContentBeforeEdition
+        box.msaPageContentBeforeEdition = content
     }
 
     async getPage() {
@@ -189,14 +194,22 @@ export class HTMLMsaPageElement extends HTMLElement {
         this.setAttribute("editable", page.editable || false)
     }
 
-    async postPage() {
-        const tmpl = await exportMsaBox(this.children)
+    async exportMsaBox(el) {
+        if(!el) el = this.children
+        const tmpl = await exportMsaBox(el)
         for (let ed of tmpl.content.querySelectorAll(".msa-page-editor"))
             ed.remove()
-        for (let box of tmpl.content.querySelectorAll(".msa-page-box-editable"))
+        for (let box of tmpl.content.querySelectorAll(".msa-page-box-editable")) {
             box.classList.remove("msa-page-box-editable")
+            box.removeAttribute("tabindex")
+        }
+        return tmpl
+    }
+
+    async postPage() {
+        const content = (await this.exportMsaBox()).innerHTML
         await ajax("POST", `${this.getBaseUrl()}/${this.getId()}/_page`, {
-            body: { content: tmpl.innerHTML }
+            body: { content }
         })
     }
 }
