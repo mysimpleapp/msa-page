@@ -66,21 +66,3 @@ export class HTMLMsaPageElement extends HTMLElement {
 
 // register elem
 customElements.define("msa-page", HTMLMsaPageElement)
-
-// register editable element
-export class HTMLMsaPageTextElement extends HTMLElement {
-    initContent() {
-        for (let c of this.children)
-            if (c.classList.contains("content"))
-                return c
-        const res = document.createElement("div")
-        res.classList.add("content")
-        res.style.flex = 1
-        this.appendChild(res)
-        return res
-    }
-}
-customElements.define("msa-page-text", HTMLMsaPageTextElement)
-
-export class HTMLMsaPageBoxesElement extends HTMLElement { }
-customElements.define("msa-page-boxes", HTMLMsaPageBoxesElement)
