@@ -1,7 +1,7 @@
-import { importHtml, importOnCall, ajax, createMsaBox, initMsaBox, exportMsaBox, editMsaBox, forEachDeepMsaBox } from "/utils/msa-utils.js"
+import { importHtml, importOnCall, ajax, initMsaBox } from "/utils/msa-utils.js"
 
-const addPopup = importOnCall("/utils/msa-utils-popup.js", "addPopup")
-const setPositionRelativeTo = importOnCall("/utils/msa-utils-position.js", "setPositionRelativeTo")
+const editMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "editMsaBoxes")
+const exportMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "exportMsaBoxes")
 
 importHtml(`<style>
 	msa-page {
@@ -10,58 +10,7 @@ importHtml(`<style>
         flex-direction: column;
 		flex: 1;
     }
-
-    msa-page .msa-page-line {
-        display: flex;
-        flex-direction: row;
-    }
-
-    msa-page .msa-page-line > * {
-        margin: .5em;
-        padding: .5em;
-    }
-
-    msa-page .msa-page-box-editable {
-        outline: 1px dashed lightgrey;
-    }
-
-    msa-page .msa-page-box-editable:hover, 
-    msa-page .msa-page-box-editing {
-        box-shadow: 2px 2px 10px grey;
-    }
-    
-    msa-page .msa-page-first-add-btn {
-        display: block;
-        height: 3em;
-        background: white;
-        background-image: url('/utils/img/add');
-        background-size: 1.5em;
-        background-repeat: no-repeat;
-        background-position: center;
-        border: 2px dashed black;
-        border-radius: .5em;
-        cursor: pointer;
-    }
-    
-    msa-page .msa-page-box-add-btn {
-        display: block;
-        position: absolute;
-        width: 2em;
-        height: 2em;
-        background: white;
-        background-image: url('/utils/img/add');
-        background-size: 80%;
-        background-repeat: no-repeat;
-        background-position: center;
-        box-shadow: 1px 1px 5px grey;
-        border-radius: .5em;
-        cursor: pointer;
-    }
-    msa-page .msa-page-box-add-btn:hover {
-        box-shadow: 1px 1px 5px black;
-    }
 </style>`)
-
 
 export class HTMLMsaPageElement extends HTMLElement {
 
@@ -83,106 +32,19 @@ export class HTMLMsaPageElement extends HTMLElement {
         if (this.toFetch()) {
             await this.getPage()
         } else {
-            await this.initMsaBox(this)
-        }
-        // dynamically import msa-page-menu
-        //if (this.isEditable())
-        //    importHtml({ wel: '/page/msa-page-menu.js' }, this)
-        if(this.isEditable()) {
-            this.initFirstAddButtons()
-        }
-    }
-
-    initFirstAddButtons() {
-        if(this.querySelectorAll(".msa-page-line").length === 0) {
-            const btnEl = document.createElement("div")
-            btnEl.classList.add("msa-page-first-add-btn", "msa-page-editor")
-            this.initAddButton(btnEl, newBoxEl => {
-                insertBefore(this.createLine(newBoxEl), btnEl)
-                btnEl.remove()
-            })
-            this.appendChild(btnEl)
-        }
-    }
-
-    initAddButton(addBtn, insertBoxFn) {
-        addBtn.onclick = async () => {
-            await import("/utils/msa-utils-boxes-menu.js")
-            const popup = await addPopup(this, document.createElement("msa-utils-boxes-menu"))
-            popup.content.onSelect = async tag => {
-                popup.remove()
-                const box = await createMsaBox(tag, {
-                    parent: this,
-                    boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
-                })
-                await this.initMsaBox(box)
-                insertBoxFn(box)
-                this.postPage()
-            }
-        }
-    }
-
-    async initMsaBox(el) {
-        await initMsaBox(el, { boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box` })
-        if(this.isEditable()) {
-            await forEachDeepMsaBox(el, async box => {
-                box.msaPageContentBeforeEdition = (await this.exportMsaBox(box)).innerHTML
-                box.classList.add("msa-page-box-editable")
-                box.setAttribute("tabindex", 0)
-                box.addEventListener("focus", () => this.editMsaBox(box))
-                box.addEventListener("focusout", evt => {
-                    if(!box.contains(evt.relatedTarget))
-                        this.stopEditMsaBox(box)
-                })
-                box.addEventListener("mouseenter", () => this.addBoxAddButtons(box))
-                box.addEventListener("mouseleave", () => this.rmBoxAddButtons(box))
+            await initMsaBox(this, {
+                parent: this,
+                boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
             })
         }
-    }
 
-    addBoxAddButtons(boxEl) {
-        const lineEl = boxEl.parentNode
-        const addBtn = (posX, posY, onNewBox) => {
-            const btnEl = document.createElement("button")
-            btnEl.classList.add("msa-page-box-add-btn", "msa-page-editor")
-            setPositionRelativeTo(btnEl, boxEl, posX, posY)
-            boxEl.appendChild(btnEl)
-            this.initAddButton(btnEl, onNewBox)
+        if(this.isEditable()) {
+            await editMsaBoxes(this, {
+                boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
+            })
+            this.addEventListener("msa-box-inserted", () => this.postPage())
+            this.addEventListener("msa-box-edited", () => this.postPage())
         }
-        addBtn("left", "center", newBoxEl => insertBefore(newBoxEl, boxEl))
-        addBtn("right", "center", newBoxEl => insertAfter(newBoxEl, boxEl))
-        addBtn("center", "top", newBoxEl => insertBefore(this.createLine(newBoxEl), lineEl))
-        addBtn("center", "bottom", newBoxEl => insertAfter(this.createLine(newBoxEl), lineEl))
-    }
-
-    rmBoxAddButtons(box) {
-        box.querySelectorAll(".msa-page-box-add-btn").forEach(b => b.remove())
-    }
-
-    createLine(box) {
-        const lineEl = document.createElement("div")
-        lineEl.classList.add("msa-page-line")
-        lineEl.appendChild(box)
-        return lineEl
-    }
-
-    async editMsaBox(box) {
-        if (box === this.editingBox) return
-        if (this.editingBox) this.stopEditMsaBox(this.editingBox)
-        this.editingBox = box
-        box.classList.add("msa-page-box-editing")
-        await editMsaBox(box, true)
-    }
-
-    async stopEditMsaBox(box) {
-        if (box !== this.editingBox) return
-        delete this.editingBox
-        box.classList.remove("msa-page-box-editing")
-        await editMsaBox(box, false)
-        const content = (await this.exportMsaBox(box)).innerHTML
-        if (content != box.msaPageContentBeforeEdition)
-            this.postPage()
-        box.msaPageContentBeforeEdition = content
     }
 
     async getPage() {
@@ -194,20 +56,8 @@ export class HTMLMsaPageElement extends HTMLElement {
         this.setAttribute("editable", page.editable || false)
     }
 
-    async exportMsaBox(el) {
-        if(!el) el = this.children
-        const tmpl = await exportMsaBox(el)
-        for (let ed of tmpl.content.querySelectorAll(".msa-page-editor"))
-            ed.remove()
-        for (let box of tmpl.content.querySelectorAll(".msa-page-box-editable")) {
-            box.classList.remove("msa-page-box-editable")
-            box.removeAttribute("tabindex")
-        }
-        return tmpl
-    }
-
     async postPage() {
-        const content = (await this.exportMsaBox()).innerHTML
+        const content = (await exportMsaBoxes(this.children)).innerHTML
         await ajax("POST", `${this.getBaseUrl()}/${this.getId()}/_page`, {
             body: { content }
         })
@@ -216,7 +66,6 @@ export class HTMLMsaPageElement extends HTMLElement {
 
 // register elem
 customElements.define("msa-page", HTMLMsaPageElement)
-
 
 // register editable element
 export class HTMLMsaPageTextElement extends HTMLElement {
@@ -235,13 +84,3 @@ customElements.define("msa-page-text", HTMLMsaPageTextElement)
 
 export class HTMLMsaPageBoxesElement extends HTMLElement { }
 customElements.define("msa-page-boxes", HTMLMsaPageBoxesElement)
-
-// utils
-
-function insertBefore(newNode, refNode) {
-    refNode.parentNode.insertBefore(newNode, refNode)
-}
-
-function insertAfter(newNode, refNode) {
-    refNode.parentNode.insertBefore(newNode, refNode.nextSibling)
-}
