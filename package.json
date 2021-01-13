@@ -10,6 +10,8 @@
   "license": "ISC",
   "msaKey": "page",
   "msaDependencies": {
-    "user": "@mysimpleapp/msa-user"
+    "params": "@mysimpleapp/msa-params",
+    "user": "@mysimpleapp/msa-user",
+    "db": "@mysimpleapp/msa-db"
   }
 }
