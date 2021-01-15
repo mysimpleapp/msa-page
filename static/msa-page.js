@@ -1,4 +1,4 @@
-import { importHtml, importOnCall, ajax, initMsaBox } from "/utils/msa-utils.js"
+import { importHtml, importOnCall, ajax, exposeMsaBoxCtx } from "/utils/msa-utils.js"
 
 const editMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "editMsaBoxes")
 const exportMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "exportMsaBoxes")
@@ -28,14 +28,15 @@ export class HTMLMsaPageElement extends HTMLElement {
     }
 
     async connectedCallback() {
+
+        exposeMsaBoxCtx(this, {
+            parent: this,
+            boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
+        })
+
         this.editing = false
         if (this.toFetch()) {
             await this.getPage()
-        } else {
-            await initMsaBox(this, {
-                parent: this,
-                boxesRoute: `${this.getBaseUrl()}/${this.getId()}/_box`
-            })
         }
 
         if(this.isEditable()) {
@@ -51,15 +52,17 @@ export class HTMLMsaPageElement extends HTMLElement {
         const page = await ajax("GET", `${this.getBaseUrl()}/${this.getId()}/_page`)
         const template = document.createElement("template")
         template.innerHTML = page.content || ""
-        await this.initMsaBox(template.content)
         this.appendChild(template.content)
         this.setAttribute("editable", page.editable || false)
     }
 
     async postPage() {
-        const content = (await exportMsaBoxes(this.children)).innerHTML
+        const exported = await exportMsaBoxes(this.children)
         await ajax("POST", `${this.getBaseUrl()}/${this.getId()}/_page`, {
-            body: { content }
+            body: {
+                head: exported.head.innerHTML,
+                body: exported.body.innerHTML
+            }
         })
     }
 }

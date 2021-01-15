@@ -2,7 +2,7 @@ const { PageParamDict } = require("./params")
 
 const exp = module.exports = {}
 
-const FIELDS = [ "content", "createdById", "createdBy", "updatedBy", "createdAt", "updatedAt", "params" ]
+const FIELDS = [ "head", "body", "createdById", "createdBy", "updatedBy", "createdAt", "updatedAt", "params" ]
 
 exp.Page = class {
 

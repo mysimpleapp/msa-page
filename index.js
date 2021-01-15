@@ -67,13 +67,16 @@ class MsaPageModule extends Msa.Module {
 			const id = this.getId(req, reqId)
 			const page = await this.getPage(req, id)
 			res.sendPage({
-				wel: "/page/msa-page.js",
-				attrs: {
-					'page-id': reqId,
-					'editable': this.canWrite(req, page),
-					'fetch': 'false'
-				},
-				content: page.content
+				head: page.head,
+				body: {
+					wel: "/page/msa-page.js",
+					attrs: {
+						'page-id': reqId,
+						'editable': this.canWrite(req, page),
+						'fetch': 'false'
+					},
+					content: page.body
+				}
 			})
 		})
 
@@ -88,8 +91,8 @@ class MsaPageModule extends Msa.Module {
 		this.app.post("/:id/_page", userMdw, async (req, res, next) => {
 			try {
 				const id = this.getId(req, req.params.id)
-				const { content, by } = req.body
-				await this.upsertPage(req, id, content, { by })
+				const { head, body, by } = req.body
+				await this.upsertPage(req, id, head, body, { by })
 				res.sendStatus(Msa.OK)
 			} catch(err) { next(err) }
 		})
@@ -119,7 +122,8 @@ class MsaPageModule extends Msa.Module {
 	exportPage(req, page) {
 		return {
 			id: page.id,
-			content: page.content,
+			head: page.head,
+			body: page.body,
 			createdById: page.createdById,
 			createdBy: page.createdBy,
 			updatedBy: page.updatedBy,
@@ -129,10 +133,11 @@ class MsaPageModule extends Msa.Module {
 		}
 	}
 
-	async upsertPage(req, id, content, kwargs) {
+	async upsertPage(req, id, head, body, kwargs) {
 		const page = await this.getPage(req, id)
 		if (!this.canWrite(req, page)) throw Msa.FORBIDDEN
-		page.content = content
+		page.head = head
+		page.body = body
 		page.updatedBy = this.getUserName(req, kwargs && kwargs.by)
 		page.updatedAt = new Date(Date.now())
 		if (!page.createdById) {
