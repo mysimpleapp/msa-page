@@ -3,14 +3,12 @@ const { PagePerm } = require("./perm")
 const { useMsaBoxesRouter } = Msa.require("utils")
 const { db } = Msa.require("db")
 const { userMdw, unauthHtml } = Msa.require("user")
-//const { MsaSheet, renderSheetAsHtml } = Msa.require("sheet/module")
 
 class MsaPageModule extends Msa.Module {
 
 	constructor() {
 		super()
 		this.initApp()
-		//this.initSheetMod()
 	}
 
 	getId(req, reqId) {
@@ -43,21 +41,6 @@ class MsaPageModule extends Msa.Module {
 	}
 
 	initApp() {
-		/*
-				this.app.get("/:id", userMdw, async (req, res, next) => {
-					withDb(async db => {
-						const ctx = newCtx(req, { db })
-						const reqId = req.params.id
-						const id = this.sheetMod.getId(ctx, reqId)
-						const sheet = await this.sheetMod.getSheet(ctx, id)
-						if (sheet === null) return next(Msa.NOT_FOUND)
-						res.sendPage(renderSheetAsHtml(sheet, "/page/_sheet", reqId))
-					}).catch(err => {
-						if (err === Msa.FORBIDDEN) res.sendPage(unauthHtml)
-						else next(err)
-					})
-				})
-		*/
 
 		// get page
 		this.app.get("/:id", async (req, res, next) => {
@@ -69,7 +52,7 @@ class MsaPageModule extends Msa.Module {
 			res.sendPage({
 				head: page.head,
 				body: {
-					wel: "/page/msa-page.js",
+					wel: "/msa/page/msa-page.js",
 					attrs: {
 						'page-id': reqId,
 						'editable': this.canWrite(req, page),
@@ -102,16 +85,7 @@ class MsaPageModule extends Msa.Module {
 			parentId: `page-${req.params.id}`
 		}))
 	}
-	/*
-		initSheetMod() {
-			this.sheetMod = new class extends MsaSheet {
-				getId(ctx, reqId) {
-					return `page-${reqId}`
-				}
-			}
-			this.app.use("/_sheet", this.sheetMod.app)
-		}
-	*/
+
 	async getPage(req, id) {
 		const dbPage = await db.collection("msa_pages").findOne({ _id:id })
 		const page = Page.newFromDb(id, dbPage)
@@ -149,20 +123,6 @@ class MsaPageModule extends Msa.Module {
 	}
 }
 
-/*
-// register page sheets
-msaSheet.registerType("page", {
-	perms: {
-		create: { group: "admin" }
-	},
-	content: {
-		tag: "msa-sheet-boxes",
-		content: {
-			tag: "msa-sheet-text"
-		}
-	}
-})
-*/
 
 // export
 

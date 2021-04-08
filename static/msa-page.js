@@ -1,7 +1,8 @@
-import { importHtml, importOnCall, ajax, exposeMsaBoxCtx } from "/utils/msa-utils.js"
+import { importHtml, importOnCall, ajax, exposeMsaBoxCtx } from "/msa/utils/msa-utils.js"
 
-const editMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "editMsaBoxes")
-const exportMsaBoxes = importOnCall("/utils/msa-utils-box-edition.js", "exportMsaBoxes")
+const srcMsaBoxEdition = "/msa/utils/msa-utils-box-edition.js"
+const editMsaBoxes = importOnCall(srcMsaBoxEdition, "editMsaBoxes")
+const exportMsaBoxes = importOnCall(srcMsaBoxEdition, "exportMsaBoxes")
 
 importHtml(`<style>
 	msa-page {
@@ -15,7 +16,7 @@ importHtml(`<style>
 export class HTMLMsaPageElement extends HTMLElement {
 
     getBaseUrl() {
-        return "/page"
+        return "/msa/page"
     }
     getId() {
         return this.getAttribute("page-id")
